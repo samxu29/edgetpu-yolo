@@ -24,10 +24,11 @@ if __name__ == "__main__":
     parser.add_argument("--model", "-m", help="weights file", required=True)
     parser.add_argument("--bench_speed", action='store_true', help="run speed test on dummy data")
     parser.add_argument("--bench_image", action='store_true', help="run detection test")
-    parser.add_argument("--conf_thresh", type=float, default=0.25, help="model confidence threshold")
-    parser.add_argument("--iou_thresh", type=float, default=0.45, help="NMS IOU threshold")
+    parser.add_argument("--conf_thresh", type=float, default=0.50, help="model confidence threshold")
+    parser.add_argument("--iou_thresh", type=float, default=0.50, help="NMS IOU threshold")
     parser.add_argument("--names", type=str, default='data/coco.yaml', help="Names file")
     parser.add_argument("--image", "-i", type=str, help="Image file to run detection on")
+    parser.add_argument("--video", type=str, help='Path to the video file')
     parser.add_argument("--device", type=int, default=0, help="Image capture device to run live detection")
     parser.add_argument("--stream", action='store_true', help="Process a stream")
     parser.add_argument("--bench_coco", action='store_true', help="Process a stream")
@@ -85,8 +86,8 @@ if __name__ == "__main__":
         logger.info("Mean FPS: {:1.2f}".format(fps))
 
     elif args.bench_image:
-        logger.info("Testing on Zidane image")
-        model.predict("./data/images/zidane.jpg")
+        logger.info("Testing on bus image")
+        model.predict("./data/images/bus.jpg")
 
     elif args.bench_coco:
         logger.info("Testing on COCO dataset")
@@ -147,8 +148,42 @@ if __name__ == "__main__":
             break
           
         cam.release()
-            
         
+    elif args.video:
+        logger.info("Opening video file: {}".format(args.video))
+        
+        # Open the video file
+        video = cv2.VideoCapture(args.video)
 
-    
+        # Get the video properties
+        frame_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        frame_rate = video.get(cv2.CAP_PROP_FPS)
+        
+        # Define the codec and create VideoWriter object
+        fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+        out = cv2.VideoWriter('processed_video.mp4', fourcc, frame_rate, (frame_width, frame_height))
 
+        while True:
+            try:
+                res, image = video.read()
+                
+                if res is False:
+                    logger.info("End of video file reached or an error occurred")
+                    break
+                else:
+                    full_image, net_image, pad = get_image_tensor(image, input_size[0])
+                    pred = model.forward(net_image)
+                    
+                    processed_frame = model.process_predictions(pred[0], full_image, pad)
+                    
+                    # Write the processed frame to the output video
+                    out.write(processed_frame)
+
+                    tinference, tnms = model.get_last_inference_time()
+                    logger.info("Frame processed in {}".format(tinference + tnms))
+            except KeyboardInterrupt:
+                break
+            
+        video.release()
+        out.release()

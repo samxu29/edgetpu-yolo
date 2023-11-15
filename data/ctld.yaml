@@ -1,0 +1,18 @@
+path: 
+train: 
+val: 
+test:
+
+# Classes
+nc: 8  # number of classes
+names: [
+        'Red',
+        'RedLeft',
+        'Yellow',
+        'YellowLeft',
+        'Green',
+        'GreenLeft',
+        'FalseDetec',
+        'Sign'
+]  # class names
+
